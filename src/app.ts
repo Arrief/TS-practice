@@ -1,3 +1,43 @@
+// Project State Management
+class ProjectState {
+  private listeners: any[] = [];
+  private projects: any[] = [];
+  private static instance: ProjectState;
+
+  private constructor() {}
+
+  static getInstance() {
+    if (this.instance) {
+      return this.instance;
+    }
+    this.instance = new ProjectState();
+    return this.instance;
+  }
+
+  // listeners for whenever the state changes
+  addListener(listenerFn: Function) {
+    this.listeners.push(listenerFn);
+  }
+
+  addProject(title: string, description: string, numOfPeople: number) {
+    const newProject = {
+      id: Math.random().toString(),
+      title: title,
+      description: description,
+      people: numOfPeople,
+    };
+    this.projects.push(newProject);
+    // calling & executing all listener fn's after change
+    for (const listenerFn of this.listeners) {
+      // use copy of array and not original one in order to avoid accidental changes by the listenerFn
+      listenerFn(this.projects.slice());
+    }
+  }
+}
+
+// global instance for the project state, will only be 1 object for the entire application and always the same for everything
+const projectState = ProjectState.getInstance();
+
 // Validation
 interface Validatable {
   value: string | number;
@@ -70,6 +110,7 @@ class ProjectList {
   hostElement: HTMLDivElement;
   // element is a <section> here
   element: HTMLElement;
+  assignedProjects: any[];
 
   // constructor will get an argument which is a liter string type
   constructor(private type: "active" | "finished") {
@@ -77,6 +118,7 @@ class ProjectList {
       "project-list"
     )! as HTMLTemplateElement;
     this.hostElement = document.getElementById("app")! as HTMLDivElement;
+    this.assignedProjects = [];
 
     const importedNode = document.importNode(
       this.templateElement.content,
@@ -84,8 +126,24 @@ class ProjectList {
     );
     this.element = importedNode.firstElementChild as HTMLElement;
     this.element.id = `${this.type}-projects`;
+    projectState.addListener((projects: any[]) => {
+      this.assignedProjects = projects;
+      this.renderProjects();
+    });
+
     this.attach();
     this.renderContent();
+  }
+
+  private renderProjects() {
+    const listEl = document.getElementById(
+      `${this.type}-projects-list`
+    )! as HTMLUListElement;
+    for (const projItem of this.assignedProjects) {
+      const listItem = document.createElement("li");
+      listItem.textContent = projItem.title;
+      listEl.appendChild(listItem);
+    }
   }
 
   private renderContent() {
@@ -192,7 +250,8 @@ class ProjectInput {
     // Array object comes with method to check if argument is an array or not and out tuple is basically an array
     if (Array.isArray(userInput)) {
       const [title, desc, people] = userInput;
-      console.log(title, desc, people);
+      // register this new project into the global state
+      projectState.addProject(title, desc, people);
       this.clearInputs();
     }
   }
