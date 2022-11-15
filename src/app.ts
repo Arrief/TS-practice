@@ -166,6 +166,37 @@ abstract class Component<T extends HTMLElement, U extends HTMLElement> {
   abstract renderContent(): void;
 }
 
+// class for project items
+class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> {
+  private project: Project;
+
+  // getter for number of persons assigned to project
+  get persons() {
+    if (this.project.people === 1) {
+      return "1 person";
+    } else {
+      return `${this.project.people} persons`;
+    }
+  }
+
+  constructor(hostId: string, project: Project) {
+    super("single-project", hostId, false, project.id);
+    this.project = project;
+
+    this.configure();
+    this.renderContent();
+  }
+
+  configure() {}
+
+  renderContent() {
+    this.element.querySelector("h2")!.textContent = this.project.title;
+    // "this.persons" triggers the getter
+    this.element.querySelector("h3")!.textContent = this.persons + " assigned";
+    this.element.querySelector("p")!.textContent = this.project.description;
+  }
+}
+
 // class to render the list of projects
 class ProjectList extends Component<HTMLDivElement, HTMLElement> {
   assignedProjects: Project[];
@@ -206,9 +237,7 @@ class ProjectList extends Component<HTMLDivElement, HTMLElement> {
     // get rid of list items and re-render whenever a new project comes in; otherwise double-display of each project...
     listEl.innerHTML = "";
     for (const projItem of this.assignedProjects) {
-      const listItem = document.createElement("li");
-      listItem.textContent = projItem.title;
-      listEl.appendChild(listItem);
+      new ProjectItem(this.element.querySelector("ul")!.id, projItem);
     }
   }
 }
